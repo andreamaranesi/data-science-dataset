@@ -22,9 +22,8 @@ class CleanData:
     time_table_name = None
     __max_row_length = 100000
 
-    def write_time_to_csv(self, rows):
-        time_table_columns = ['Country Code',
-                              'Indicator Code', 'Year', 'Value']
+    def __write_time_to_csv(self, columns, rows):
+        time_table_columns = columns + ['Year', 'Value']
         time_table_output = os.path.join(
             self.path, self.time_table_name)
 
@@ -46,18 +45,24 @@ class CleanData:
         data_column_names = list(data_columns.values)
 
         data_years = list()
+        string_columns = list()
 
         # estraiamo la lista delle colonne "Anno"
         # es. 1960,1961...
         for data_column_name in data_column_names:
+            tuple = [data_column_name, data_columns.get_loc(data_column_name)]
+            if("Unnamed: " in data_column_name):
+                continue
             if data_column_name.isnumeric():
                 data_years.append(
-                    [data_column_name, data_columns.get_loc(data_column_name)])
-
-        indicator_code_loc = data_columns.get_loc("Indicator Code")
-        country_code_loc = data_columns.get_loc("Country Code")
+                    tuple)
+            else:
+                string_columns.append(tuple)
 
         new_table_rows = list()
+        new_table_columns = [string_column[0]
+                             for string_column in string_columns]
+    
 
         for data_row in data_rows.itertuples(index=False):
 
@@ -68,9 +73,9 @@ class CleanData:
                 # scriviamo una riga sulla nuova tabella del tempo
                 if not math.isnan(value):
                     new_row = list()
-                    new_row.append(data_row[country_code_loc])
-                    new_row.append(
-                        data_row[indicator_code_loc])
+                    for string_column in string_columns:
+                        new_row.append(data_row[string_column[1]])
+
                     new_row.append(int(year[0]))
                     new_row.append(value)
 
@@ -78,11 +83,13 @@ class CleanData:
 
                     # per evitare sovraccarichi di memoria centrale
                     if(len(new_table_rows) == self.__max_row_length):
-                        self.write_time_to_csv(new_table_rows)
+                        self.__write_time_to_csv(
+                            new_table_columns, new_table_rows)
                         new_table_rows.clear()
                         print("csv tempo aggiornato")
 
-        self.write_time_to_csv(new_table_rows)
+        self.__write_time_to_csv(
+            new_table_columns, new_table_rows)
         print("csv tempo caricato")
 
 
@@ -90,7 +97,7 @@ class CleanDataBuilder(Builder):
     """ builder per gestire la creazione di CleanData"""
 
     __path = "data"
-    __output_time_table = "WDITime.csv"
+    __output_time_table = "WDIData_New.csv"
     __clean_data = None
 
     def __init__(self):
